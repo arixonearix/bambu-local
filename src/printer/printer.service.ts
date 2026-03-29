@@ -217,8 +217,21 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
     return md5;
   }
 
+  clearPrintError(): void {
+    this.logger.log('Clearing print error');
+    this.publish({
+      print: {
+        sequence_id: String(this.sequenceId++),
+        command: 'clean_print_error',
+      },
+    });
+  }
+
   async startPrint(filename: string, md5 = ''): Promise<void> {
     this.logger.log(`Starting print: ${filename}`);
+
+    // Clear any lingering print errors before starting
+    this.clearPrintError();
 
     const is3mf = filename.toLowerCase().endsWith('.3mf');
 
