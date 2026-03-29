@@ -229,6 +229,7 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
         param: is3mf ? 'Metadata/plate_1.gcode' : '',
         subtask_name: filename,
         url: `ftp:///cache/${filename}`,
+        md5: '',
         bed_type: 'auto',
         timelapse: false,
         bed_leveling: true,
@@ -245,6 +246,9 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
     };
 
     this.publish(printPayload);
+
+    // Request full status after sending print command to see printer's response
+    setTimeout(() => this.requestFullStatus(), 3000);
   }
 
   printGcodeFromPrinter(path: string): void {
