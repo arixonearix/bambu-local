@@ -98,8 +98,16 @@ export class PrinterController {
 
   @Post('test-print')
   testPrint() {
-    this.printerService.printGcodeFromPrinter('/cache/1_color_V1_plate_1.gcode');
+    // Try project_file with a file already in cache from Bambu Studio
+    this.printerService.startPrint('1_color_V1.1.gcode.3mf');
     return { success: true, message: 'Test print command sent' };
+  }
+
+  @Post('test-print2')
+  testPrint2() {
+    // Try with the original Bambu Studio file name pattern
+    this.printerService.startPrint('1_color_V1.1.3mf');
+    return { success: true, message: 'Test print2 command sent' };
   }
 
   @Post('test-gcode')
