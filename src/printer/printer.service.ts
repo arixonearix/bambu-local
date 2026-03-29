@@ -181,8 +181,15 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
         secureOptions: { rejectUnauthorized: false },
       });
       this.logger.log(`FTP connected, uploading ${remoteFilename}`);
-      await ftp.uploadFrom(filePath, `/${remoteFilename}`);
-      this.logger.log(`Upload complete: /${remoteFilename}`);
+      // Upload to /cache/ - where Bambu Studio puts files for LAN printing
+      try {
+        await ftp.uploadFrom(filePath, `/cache/${remoteFilename}`);
+        this.logger.log(`Upload complete: /cache/${remoteFilename}`);
+      } catch (e) {
+        this.logger.warn(`Failed to upload to /cache/, trying root: ${e.message}`);
+        await ftp.uploadFrom(filePath, `/${remoteFilename}`);
+        this.logger.log(`Upload complete: /${remoteFilename}`);
+      }
     } finally {
       ftp.close();
     }
@@ -201,7 +208,7 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
         command: 'project_file',
         param: is3mf ? 'Metadata/plate_1.gcode' : '',
         subtask_name: filename,
-        url: `ftp://${filename}`,
+        url: `ftp:///cache/${filename}`,
         bed_type: 'auto',
         timelapse: false,
         bed_leveling: true,
