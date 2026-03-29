@@ -98,7 +98,7 @@ export class PrinterController {
 
   @Post('test-print')
   testPrint() {
-    this.printerService.printGcodeFromPrinter('/cache/form-for-s2-bottle-str_plate_1.gcode');
+    this.printerService.printGcodeFromPrinter('/cache/1_color_V1_plate_1.gcode');
     return { success: true, message: 'Test print command sent' };
   }
 
