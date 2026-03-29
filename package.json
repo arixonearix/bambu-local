@@ -1,0 +1,31 @@
+{
+  "name": "bambu-print-server",
+  "version": "1.0.0",
+  "description": "Web server to send print jobs to Bambu Lab P1P",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.0",
+    "@nestjs/config": "^3.2.0",
+    "@nestjs/core": "^10.4.0",
+    "@nestjs/platform-express": "^10.4.0",
+    "@nestjs/platform-socket.io": "^10.4.0",
+    "@nestjs/serve-static": "^4.0.0",
+    "@nestjs/websockets": "^10.4.0",
+    "basic-ftp": "^5.0.5",
+    "mqtt": "^5.10.0",
+    "multer": "^1.4.5-lts.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.0",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

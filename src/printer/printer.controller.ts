@@ -1,0 +1,95 @@
+import {
+  Controller,
+  Get,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { PrinterService } from './printer.service';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+@Controller('api')
+export class PrinterController {
+  constructor(private readonly printerService: PrinterService) {}
+
+  @Get('status')
+  getStatus() {
+    return this.printerService.getStatus();
+  }
+
+  @Post('print')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: uploadDir,
+        filename: (req, file, cb) => {
+          cb(null, file.originalname);
+        },
+      }),
+    }),
+  )
+  async startPrint(@UploadedFile() file: Express.Multer.File) {
+    const filePath = file.path;
+    const filename = file.originalname;
+
+    try {
+      const md5 = await this.printerService.uploadFile(filePath, filename);
+      await this.printerService.startPrint(filename, md5);
+      return { success: true, message: `Print started: ${filename}` };
+    } catch (error) {
+      return { success: false, message: error.message };
+    } finally {
+      fs.unlink(filePath, () => {});
+    }
+  }
+
+  @Post('stop')
+  stopPrint() {
+    this.printerService.stopPrint();
+    return { success: true, message: 'Print stopped' };
+  }
+
+  @Post('pause')
+  pausePrint() {
+    this.printerService.pausePrint();
+    return { success: true, message: 'Print paused' };
+  }
+
+  @Post('resume')
+  resumePrint() {
+    this.printerService.resumePrint();
+    return { success: true, message: 'Print resumed' };
+  }
+
+  @Post('test-print')
+  testPrint() {
+    this.printerService.printGcodeFromPrinter('/cache/form-for-s2-bottle-str_plate_1.gcode');
+    return { success: true, message: 'Test print command sent' };
+  }
+
+  @Post('test-gcode')
+  testGcode() {
+    this.printerService.sendGcodeLine('M17\n');
+    return { success: true, message: 'Gcode line sent (M17 - enable steppers)' };
+  }
+
+  @Post('test-version')
+  testVersion() {
+    this.printerService.getVersion();
+    return { success: true, message: 'Version request sent' };
+  }
+
+  @Post('test-pushall')
+  testPushall() {
+    this.printerService.requestStatus();
+    return { success: true, message: 'Pushall sent - check logs' };
+  }
+}

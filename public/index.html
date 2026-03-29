@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bambu P1P Print Server</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 30px; color: #00d4aa; }
+    .card { background: #16213e; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #0f3460; }
+    .card h2 { margin-bottom: 16px; color: #00d4aa; font-size: 18px; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .status-item { background: #0f3460; border-radius: 8px; padding: 14px; }
+    .status-item .label { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+    .status-item .value { font-size: 22px; font-weight: 600; }
+    .progress-bar { width: 100%; height: 24px; background: #0f3460; border-radius: 12px; overflow: hidden; margin-top: 12px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4aa, #00b4d8); transition: width 0.5s; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .upload-zone { border: 2px dashed #0f3460; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #00d4aa; background: rgba(0, 212, 170, 0.05); }
+    .upload-zone input { display: none; }
+    .upload-zone p { color: #888; margin-top: 8px; }
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; flex: 1; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-print { background: #00d4aa; color: #1a1a2e; }
+    .btn-print:hover:not(:disabled) { background: #00e4ba; }
+    .btn-pause { background: #f4a261; color: #1a1a2e; }
+    .btn-pause:hover:not(:disabled) { background: #f4b271; }
+    .btn-stop { background: #e76f51; color: #fff; }
+    .btn-stop:hover:not(:disabled) { background: #f77f61; }
+    .btn-resume { background: #00b4d8; color: #1a1a2e; }
+    .btn-resume:hover:not(:disabled) { background: #00c4e8; }
+    .file-name { margin-top: 12px; color: #00d4aa; font-weight: 600; }
+    .connection { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 20px; }
+    .connected { background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
+    .disconnected { background: rgba(231, 111, 81, 0.2); color: #e76f51; }
+    .log { background: #0a0a1a; border-radius: 8px; padding: 12px; margin-top: 12px; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #888; }
+    .log .entry { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bambu P1P Print Server</h1>
+    <div id="connStatus" class="connection disconnected">Disconnected</div>
+
+    <div class="card">
+      <h2>Printer Status</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="label">State</div>
+          <div class="value" id="state">--</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Nozzle Temp</div>
+          <div class="value" id="nozzleTemp">--</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Bed Temp</div>
+          <div class="value" id="bedTemp">--</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Remaining</div>
+          <div class="value" id="remaining">--</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+      </div>
+      <div class="status-grid" style="margin-top: 12px;">
+        <div class="status-item">
+          <div class="label">Current File</div>
+          <div class="value" id="currentFile" style="font-size: 14px;">--</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Layer</div>
+          <div class="value" id="layer">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Send Print</h2>
+      <div class="upload-zone" id="uploadZone">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00d4aa" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Drop .3mf or .gcode file here, or click to browse</p>
+        <input type="file" id="fileInput" accept=".3mf,.gcode,.g">
+      </div>
+      <div class="file-name" id="fileName"></div>
+      <div class="btn-row">
+        <button class="btn btn-print" id="btnPrint" disabled>Upload & Print</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Controls</h2>
+      <div class="btn-row">
+        <button class="btn btn-pause" id="btnPause">Pause</button>
+        <button class="btn btn-resume" id="btnResume">Resume</button>
+        <button class="btn btn-stop" id="btnStop">Stop</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const $ = id => document.getElementById(id);
+
+    let selectedFile = null;
+
+    function log(msg) {
+      const el = $('log');
+      const time = new Date().toLocaleTimeString();
+      el.innerHTML += `<div class="entry">[${time}] ${msg}</div>`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    socket.on('connect', () => {
+      $('connStatus').className = 'connection connected';
+      $('connStatus').textContent = 'Connected';
+      log('WebSocket connected');
+    });
+
+    socket.on('disconnect', () => {
+      $('connStatus').className = 'connection disconnected';
+      $('connStatus').textContent = 'Disconnected';
+      log('WebSocket disconnected');
+    });
+
+    socket.on('status', (status) => {
+      if (!status) return;
+
+      const stateMap = {
+        IDLE: 'Idle',
+        RUNNING: 'Printing',
+        PAUSE: 'Paused',
+        FINISH: 'Finished',
+        FAILED: 'Failed',
+        PREPARE: 'Preparing',
+      };
+
+      $('state').textContent = stateMap[status.gcode_state] || status.gcode_state || '--';
+
+      if (status.nozzle_temper !== undefined) {
+        const target = status.nozzle_target_temper ? `/${status.nozzle_target_temper}` : '';
+        $('nozzleTemp').textContent = `${Math.round(status.nozzle_temper)}${target}\u00B0C`;
+      }
+
+      if (status.bed_temper !== undefined) {
+        const target = status.bed_target_temper ? `/${status.bed_target_temper}` : '';
+        $('bedTemp').textContent = `${Math.round(status.bed_temper)}${target}\u00B0C`;
+      }
+
+      if (status.mc_percent !== undefined) {
+        const pct = status.mc_percent;
+        $('progressFill').style.width = pct + '%';
+        $('progressFill').textContent = pct + '%';
+      }
+
+      if (status.mc_remaining_time !== undefined) {
+        const mins = status.mc_remaining_time;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        $('remaining').textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      }
+
+      if (status.subtask_name) {
+        $('currentFile').textContent = status.subtask_name;
+      }
+
+      if (status.layer_num !== undefined) {
+        const total = status.total_layer_num ? `/${status.total_layer_num}` : '';
+        $('layer').textContent = `${status.layer_num}${total}`;
+      }
+    });
+
+    // File upload handling
+    const uploadZone = $('uploadZone');
+    const fileInput = $('fileInput');
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) selectFile(fileInput.files[0]);
+    });
+
+    function selectFile(file) {
+      selectedFile = file;
+      $('fileName').textContent = file.name;
+      $('btnPrint').disabled = false;
+      log(`Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+    }
+
+    $('btnPrint').addEventListener('click', async () => {
+      if (!selectedFile) return;
+      const btn = $('btnPrint');
+      btn.disabled = true;
+      btn.textContent = 'Uploading...';
+      log(`Uploading ${selectedFile.name}...`);
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const res = await fetch('/api/print', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          log(`Print started: ${selectedFile.name}`);
+        } else {
+          log(`Error: ${data.message}`);
+        }
+      } catch (err) {
+        log(`Upload failed: ${err.message}`);
+      } finally {
+        btn.textContent = 'Upload & Print';
+        btn.disabled = false;
+      }
+    });
+
+    async function sendCommand(endpoint, label) {
+      log(`Sending: ${label}`);
+      try {
+        const res = await fetch(`/api/${endpoint}`, { method: 'POST' });
+        const data = await res.json();
+        log(data.message);
+      } catch (err) {
+        log(`Failed: ${err.message}`);
+      }
+    }
+
+    $('btnPause').addEventListener('click', () => sendCommand('pause', 'Pause'));
+    $('btnResume').addEventListener('click', () => sendCommand('resume', 'Resume'));
+    $('btnStop').addEventListener('click', () => {
+      if (confirm('Are you sure you want to stop the print?')) {
+        sendCommand('stop', 'Stop');
+      }
+    });
+  </script>
+</body>
+</html>
