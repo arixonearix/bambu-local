@@ -162,13 +162,33 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
     return this.currentStatus;
   }
 
+  private async extractGcodeMd5(filePath: string): Promise<string> {
+    try {
+      const { stdout } = await execAsync(`unzip -p "${filePath}" "Metadata/plate_1.gcode.md5" 2>/dev/null`);
+      const md5 = stdout.trim().toLowerCase();
+      if (md5 && /^[a-f0-9]{32}$/.test(md5)) {
+        this.logger.log(`Extracted gcode MD5 from 3mf: ${md5}`);
+        return md5;
+      }
+    } catch (e) {
+      this.logger.warn('Could not extract gcode MD5 from 3mf');
+    }
+    return '';
+  }
+
   async uploadFile(filePath: string, remoteFilename: string): Promise<string> {
     const ftp = new FtpClient();
     ftp.ftp.verbose = false;
 
-    // Compute MD5 of the file
-    const fileBuffer = fs.readFileSync(filePath);
-    const md5 = crypto.createHash('md5').update(fileBuffer).digest('hex');
+    // Extract gcode MD5 from inside the 3mf, or compute file MD5
+    let md5 = '';
+    if (remoteFilename.toLowerCase().endsWith('.3mf')) {
+      md5 = await this.extractGcodeMd5(filePath);
+    }
+    if (!md5) {
+      const fileBuffer = fs.readFileSync(filePath);
+      md5 = crypto.createHash('md5').update(fileBuffer).digest('hex');
+    }
     this.logger.log(`File MD5: ${md5}`);
 
     try {
