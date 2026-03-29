@@ -207,6 +207,22 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
     });
   }
 
+  setLight(on: boolean): void {
+    this.logger.log(`Setting light: ${on ? 'ON' : 'OFF'}`);
+    this.publish({
+      system: {
+        sequence_id: String(this.sequenceId++),
+        command: 'ledctrl',
+        led_node: 'chamber_light',
+        led_mode: on ? 'on' : 'off',
+        led_on_time: 500,
+        led_off_time: 500,
+        loop_times: 0,
+        interval_time: 0,
+      },
+    });
+  }
+
   stopPrint(): void {
     this.logger.log('Stopping print');
     this.publish({

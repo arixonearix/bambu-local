@@ -51,6 +51,18 @@ export class PrinterController {
     }
   }
 
+  @Post('light/on')
+  lightOn() {
+    this.printerService.setLight(true);
+    return { success: true, message: 'Light turned on' };
+  }
+
+  @Post('light/off')
+  lightOff() {
+    this.printerService.setLight(false);
+    return { success: true, message: 'Light turned off' };
+  }
+
   @Post('stop')
   stopPrint() {
     this.printerService.stopPrint();

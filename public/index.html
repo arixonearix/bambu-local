@@ -101,6 +101,10 @@
         <button class="btn btn-resume" id="btnResume">Resume</button>
         <button class="btn btn-stop" id="btnStop">Stop</button>
       </div>
+      <div class="btn-row" style="margin-top: 10px;">
+        <button class="btn" id="btnLightOn" style="background: #ffd166; color: #1a1a2e;">Light On</button>
+        <button class="btn" id="btnLightOff" style="background: #555; color: #eee;">Light Off</button>
+      </div>
     </div>
 
     <div class="card">
@@ -241,6 +245,8 @@
       }
     }
 
+    $('btnLightOn').addEventListener('click', () => sendCommand('light/on', 'Light On'));
+    $('btnLightOff').addEventListener('click', () => sendCommand('light/off', 'Light Off'));
     $('btnPause').addEventListener('click', () => sendCommand('pause', 'Pause'));
     $('btnResume').addEventListener('click', () => sendCommand('resume', 'Resume'));
     $('btnStop').addEventListener('click', () => {
