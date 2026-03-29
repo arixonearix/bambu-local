@@ -54,7 +54,14 @@ export class PrinterController {
     } catch (error) {
       return { success: false, message: error.message };
     } finally {
+      // Clean up original upload
       fs.unlink(file.path, () => {});
+      // Clean up renamed STL (if spaces were replaced)
+      const safeName = file.originalname.replace(/\s+/g, '_');
+      if (safeName !== file.originalname) {
+        fs.unlink(path.join(path.dirname(file.path), safeName), () => {});
+      }
+      // Clean up sliced 3mf
       if (slicedPath) fs.unlink(slicedPath, () => {});
     }
   }

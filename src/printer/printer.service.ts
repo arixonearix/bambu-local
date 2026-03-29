@@ -5,11 +5,11 @@ import { Client as FtpClient } from 'basic-ftp';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 import { EventEmitter } from 'events';
 
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 
 @Injectable()
 export class PrinterService extends EventEmitter implements OnModuleInit, OnModuleDestroy {
@@ -119,27 +119,34 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
 
   async sliceSTL(stlPath: string): Promise<string> {
     const outputDir = path.dirname(stlPath);
-    const baseName = path.basename(stlPath, '.stl');
+    // Sanitize filename: replace spaces with underscores
+    const baseName = path.basename(stlPath, '.stl').replace(/\s+/g, '_');
+    const safeStlPath = path.join(outputDir, `${baseName}.stl`);
     const outputPath = path.join(outputDir, `${baseName}.3mf`);
     const profilesDir = path.join(process.cwd(), 'profiles');
 
-    this.logger.log(`Slicing ${stlPath} → ${outputPath}`);
+    // Rename file if it has spaces
+    if (stlPath !== safeStlPath) {
+      fs.renameSync(stlPath, safeStlPath);
+    }
 
-    const settingsFiles = [
-      path.join(profilesDir, 'print.json'),
-      path.join(profilesDir, 'printer.json'),
-    ].join(';');
+    this.logger.log(`Slicing ${safeStlPath} → ${outputPath}`);
 
-    const args = [
-      '--slice', '0',
-      '--export-3mf', outputPath,
-      '--load-settings', settingsFiles,
-      '--load-filaments', path.join(profilesDir, 'filament.json'),
-      stlPath,
-    ];
+    const settingsFiles = `${path.join(profilesDir, 'print.json')};${path.join(profilesDir, 'printer.json')}`;
+
+    const cmd = [
+      'orca-slicer',
+      '--slice 0',
+      `--export-3mf "${outputPath}"`,
+      `--load-settings "${settingsFiles}"`,
+      `--load-filaments "${path.join(profilesDir, 'filament.json')}"`,
+      `"${safeStlPath}"`,
+    ].join(' ');
+
+    this.logger.log(`Running: ${cmd}`);
 
     try {
-      const { stdout, stderr } = await execFileAsync('orca-slicer', args, {
+      const { stdout, stderr } = await execAsync(cmd, {
         timeout: 120000,
       });
       if (stderr) this.logger.warn(`Slicer stderr: ${stderr}`);
