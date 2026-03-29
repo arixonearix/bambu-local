@@ -236,7 +236,11 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
         vibration_cali: true,
         layer_inspect: false,
         use_ams: true,
-        ams_mapping: [1],
+        ams_mapping: [0],
+        profile_id: '0',
+        project_id: '0',
+        subtask_id: '0',
+        task_id: '0',
       },
     };
 
