@@ -48,8 +48,8 @@ export class PrinterController {
         filename = path.basename(slicedPath);
       }
 
-      const md5 = await this.printerService.uploadFile(filePath, filename);
-      await this.printerService.startPrint(filename, md5);
+      await this.printerService.uploadFile(filePath, filename);
+      await this.printerService.startPrint(filename);
       return { success: true, message: `Print started: ${filename}` };
     } catch (error) {
       return { success: false, message: error.message };
