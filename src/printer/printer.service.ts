@@ -125,12 +125,16 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
 
     this.logger.log(`Slicing ${stlPath} → ${outputPath}`);
 
+    const settingsFiles = [
+      path.join(profilesDir, 'print.json'),
+      path.join(profilesDir, 'printer.json'),
+    ].join(';');
+
     const args = [
       '--slice', '0',
       '--export-3mf', outputPath,
-      '--load-settings', path.join(profilesDir, 'print.json'),
+      '--load-settings', settingsFiles,
       '--load-filaments', path.join(profilesDir, 'filament.json'),
-      '--load-machine', path.join(profilesDir, 'printer.json'),
       stlPath,
     ];
 
