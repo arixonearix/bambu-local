@@ -85,8 +85,8 @@
       <h2>Send Print</h2>
       <div class="upload-zone" id="uploadZone">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00d4aa" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <p>Drop .3mf or .gcode file here, or click to browse</p>
-        <input type="file" id="fileInput" accept=".3mf,.gcode,.g">
+        <p>Drop .3mf, .gcode or .stl file here, or click to browse</p>
+        <input type="file" id="fileInput" accept=".3mf,.gcode,.g,.stl">
       </div>
       <div class="file-name" id="fileName"></div>
       <div class="btn-row">
@@ -212,8 +212,9 @@
       if (!selectedFile) return;
       const btn = $('btnPrint');
       btn.disabled = true;
-      btn.textContent = 'Uploading...';
-      log(`Uploading ${selectedFile.name}...`);
+      const isStl = selectedFile.name.toLowerCase().endsWith('.stl');
+      btn.textContent = isStl ? 'Slicing...' : 'Uploading...';
+      log(isStl ? `Slicing & uploading ${selectedFile.name}...` : `Uploading ${selectedFile.name}...`);
 
       const formData = new FormData();
       formData.append('file', selectedFile);

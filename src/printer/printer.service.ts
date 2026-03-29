@@ -5,7 +5,11 @@ import { Client as FtpClient } from 'basic-ftp';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { EventEmitter } from 'events';
+
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class PrinterService extends EventEmitter implements OnModuleInit, OnModuleDestroy {
@@ -111,6 +115,36 @@ export class PrinterService extends EventEmitter implements OnModuleInit, OnModu
         push_target: 1,
       },
     });
+  }
+
+  async sliceSTL(stlPath: string): Promise<string> {
+    const outputDir = path.dirname(stlPath);
+    const baseName = path.basename(stlPath, '.stl');
+    const outputPath = path.join(outputDir, `${baseName}.3mf`);
+    const profilesDir = path.join(process.cwd(), 'profiles');
+
+    this.logger.log(`Slicing ${stlPath} → ${outputPath}`);
+
+    const args = [
+      '--slice', '0',
+      '--export-3mf', outputPath,
+      '--load-settings', path.join(profilesDir, 'print.json'),
+      '--load-filaments', path.join(profilesDir, 'filament.json'),
+      '--load-machine', path.join(profilesDir, 'printer.json'),
+      stlPath,
+    ];
+
+    try {
+      const { stdout, stderr } = await execFileAsync('orca-slicer', args, {
+        timeout: 120000,
+      });
+      if (stderr) this.logger.warn(`Slicer stderr: ${stderr}`);
+      this.logger.log(`Slicing complete: ${outputPath}`);
+      return outputPath;
+    } catch (error) {
+      this.logger.error(`Slicing failed: ${error.message}`);
+      throw new Error(`Slicing failed: ${error.message}`);
+    }
   }
 
   getStatus() {

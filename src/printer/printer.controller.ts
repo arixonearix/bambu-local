@@ -37,17 +37,25 @@ export class PrinterController {
     }),
   )
   async startPrint(@UploadedFile() file: Express.Multer.File) {
-    const filePath = file.path;
-    const filename = file.originalname;
+    let filePath = file.path;
+    let filename = file.originalname;
+    let slicedPath: string | null = null;
 
     try {
+      if (filename.toLowerCase().endsWith('.stl')) {
+        slicedPath = await this.printerService.sliceSTL(filePath);
+        filePath = slicedPath;
+        filename = path.basename(slicedPath);
+      }
+
       const md5 = await this.printerService.uploadFile(filePath, filename);
       await this.printerService.startPrint(filename, md5);
       return { success: true, message: `Print started: ${filename}` };
     } catch (error) {
       return { success: false, message: error.message };
     } finally {
-      fs.unlink(filePath, () => {});
+      fs.unlink(file.path, () => {});
+      if (slicedPath) fs.unlink(slicedPath, () => {});
     }
   }
 
